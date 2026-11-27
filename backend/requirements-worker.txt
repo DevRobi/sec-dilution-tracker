@@ -1,0 +1,14 @@
+# Slim worker image: DB + SEC/Polygon sync + Docling + Claude (anthropic SDK; no FastAPI/Ollama).
+sqlalchemy
+asyncpg
+pydantic[email]
+email-validator
+python-dotenv
+requests
+httpx
+pandas
+yfinance
+beautifulsoup4
+lxml
+tqdm
+anthropic>=0.80

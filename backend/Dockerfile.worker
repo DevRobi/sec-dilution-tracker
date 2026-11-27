@@ -1,0 +1,18 @@
+# Worker image for Render cron jobs (non-AI + AI dilution).
+# Build context MUST be the repo root so smart_dilution_extractor is available.
+FROM python:3.11-slim
+
+WORKDIR /work/share_buyback_tracker/backend
+
+COPY backend/requirements-worker.txt requirements-worker.txt
+COPY smart_dilution_extractor/requirements.txt requirements-extractor.txt
+
+RUN pip install --no-cache-dir -r requirements-worker.txt \
+    && pip install --no-cache-dir -r requirements-extractor.txt
+
+COPY backend/ ./
+COPY smart_dilution_extractor/ /work/share_buyback_tracker/smart_dilution_extractor/
+
+ENV PYTHONUNBUFFERED=1
+ENV REPO_ROOT=/work/share_buyback_tracker
+ENV PYTHONPATH=/work/share_buyback_tracker/backend

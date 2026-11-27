@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=buyback_tracker
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d buyback_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend:/app
+      - ./smart_dilution_extractor:/app/smart_dilution_extractor
+    env_file:
+      - .env
+    environment:
+      - REPO_ROOT=/app
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db/buyback_tracker
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+      - POLYGON_API_KEY=${POLYGON_API_KEY:-}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - SEC_USER_AGENT=${SEC_USER_AGENT:?set SEC_USER_AGENT (SEC requires a real contact email)}
+      - ENABLE_AI_EXTRACTION=${ENABLE_AI_EXTRACTION:-false}
+      - DILUTION_LLM_PROVIDER=${DILUTION_LLM_PROVIDER:-anthropic}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DILUTION_LLM_MODEL=${DILUTION_LLM_MODEL:-claude-haiku-5-5}
+      - PRELOAD_TICKERS=${PRELOAD_TICKERS:-AAPL,NVDA,POET}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3:8b}
+      - MAX_AI_CHUNKS_PER_FILING=${MAX_AI_CHUNKS_PER_FILING:-8}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Same image/command as Render cron jobs — use profile "jobs" for one-off runs.
+  worker:
+    profiles: ["jobs"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.worker
+    env_file:
+      - .env
+    environment:
+      - REPO_ROOT=/work/share_buyback_tracker
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db/buyback_tracker
+      - ENABLE_AI_EXTRACTION=${ENABLE_AI_EXTRACTION:-true}
+      - DILUTION_LLM_PROVIDER=${DILUTION_LLM_PROVIDER:-anthropic}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DILUTION_LLM_MODEL=${DILUTION_LLM_MODEL:-claude-haiku-5-5}
+      - SEC_USER_AGENT=${SEC_USER_AGENT:-}
+      - POLYGON_API_KEY=${POLYGON_API_KEY:-}
+      - PRELOAD_TICKERS=${PRELOAD_TICKERS:-AAPL,NVDA,POET}
+    volumes:
+      - ./backend:/work/share_buyback_tracker/backend
+      - ./smart_dilution_extractor:/work/share_buyback_tracker/smart_dilution_extractor
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

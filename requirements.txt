@@ -1,0 +1,7 @@
+streamlit
+pandas
+requests
+plotly
+tqdm
+yfinance
+streamlit-option-menu

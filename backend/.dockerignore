@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local runtime data. These files are generated on your machine and should not
+# be sent to Render as part of the Docker build context.
+*.db
+*.db.*
+*.bak*
+*.log
+*_output_*.log
+
+.env
+.env.*
+.DS_Store
